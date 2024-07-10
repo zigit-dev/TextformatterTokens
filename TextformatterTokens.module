@@ -1,0 +1,182 @@
+<?php namespace ProcessWire;
+
+/**
+ * Tokens text formatter.
+ */
+class TextformatterTokens extends Textformatter {
+
+    /**
+     * Array of token handlers.
+     *
+     * @var array
+     */
+    private $handlers = [];
+
+    /**
+     * Provides module information.
+     *
+     * @return array
+     *   Information about the module.
+     *
+     */
+    public static function getModuleInfo() {
+        return array(
+            'title' => 'TextformatterTokens',
+            'summary' => __('Allows other modules to register tokens and replace them with actual values.', __FILE__),
+            'author' => 'ZIGIT Development',
+            'version' => 100,
+        );
+    }
+
+    /**
+     * Initializes the module.
+     */
+    public function init() {}
+
+    /**
+     * Text formatter callback.
+     *
+     * @param $str
+     *   Text to parse.
+     * @return void
+     * @throws WireException
+     *
+     */
+    public function format(&$str) {
+        $str = $this->replaceAllTokens($str);
+    }
+
+    /**
+     * Registers a token handler.
+     *
+     * @param string $tokenName
+     *   The name of the token without square brackets.
+     * @param callable $tokenHandler
+     *   The handler function that returns the replacement for the token.
+     *
+     */
+    public function registerToken($tokenName, $tokenHandler) {
+        $this->handlers[$tokenName] = $tokenHandler;
+    }
+
+    /**
+     * Replaces all tokens in a given text.
+     *
+     * @param string $subject
+     *   The text to search and replace tokens in.
+     * @return string
+     *   The text with replaced tokens.
+     * @throws WireException
+     *
+     */
+    public function replaceAllTokens($subject) {
+        foreach($this->handlers as $tokenName => $tokenHandler) {
+            $pattern = '/\[(.*?)]/';
+            $subject = preg_replace_callback($pattern, function ($matches) use($tokenName, $tokenHandler) {
+                return $this->replaceToken($matches, $tokenName, $tokenHandler);
+            }, $subject);
+        }
+
+        return $subject;
+    }
+
+    /**
+     * Extracts the token without parameters and square brackets.
+     *
+     * @param string $token
+     *   The token with square brackets.
+     * @return string
+     *   The token name.
+     *
+     */
+    private function extractTokenName($token) {
+        $token = $this->extractInnerToken($token);
+        $parts = preg_split('/\s+/', $token);
+
+        return $parts[0];
+    }
+
+    /**
+     * Extracts parameters from the token.
+     *
+     * @param string $token
+     *   The token with square brackets.
+     * @return array
+     *   An array of token parameters.
+     *
+     */
+    private function extractTokenParameters($token) {
+        $token = $this->extractInnerToken($token);
+        $pattern = '/\s+(?=(?:[^\'"]*(?:(?<!\\\\)["\'])[^\'"]*(?<!\\\\)["\'])*[^\'"]*$)/';
+        $parts = preg_split($pattern, $token);
+
+        if(count($parts) < 2) {
+            return [];
+        }
+
+        $parameters = array_slice($parts, 1);
+
+        return array_reduce($parameters, function ($result, $item)  {
+            $parameterPair = explode('=', $item);
+
+            if(count($parameterPair) === 2) {
+                $key = trim($parameterPair[0]);
+                $value = trim($parameterPair[1]);
+
+                $result[$key] = $value;
+            }
+
+            return $result;
+        }, []);
+    }
+
+    /**
+     * Returns the token without square brackets.
+     *
+     * @param string $token
+     *   The token with square brackets.
+     * @return string
+     *   The token without square brackets.
+     *
+     */
+    private function extractInnerToken($token) {
+        preg_match('/\[(.*?)]/', $token, $matches);
+        return $matches[1];
+    }
+
+    /**
+     * Replaces tokens with their corresponding values.
+     *
+     * @param array $matches
+     *   Matches provided by preg_replace_callback.
+     * @param string $tokenName
+     *   The token name without square brackets.
+     * @param callable $tokenHandler
+     *   The handler function that returns the replacement for the token.
+     * @return mixed
+     *   The replaced token value.
+     * @throws WireException
+     *
+     */
+    private function replaceToken($matches, $tokenName, $tokenHandler) {
+        $token = $matches[0];
+
+        if($this->extractTokenName($token) !== $tokenName) {
+            return $token;
+        }
+
+        try {
+            $tokenParameters = $this->extractTokenParameters($token);
+            return call_user_func($tokenHandler, $tokenParameters);
+        } catch(TokenException $exception) {
+            $message = sprintf('Token exception for %s: %s', $token, $exception->getMessage());
+            $this->wire()->log->save('tokens', $message);
+
+            if($tokenReplacement = $exception->getTokenReplacement()) {
+                return $tokenReplacement;
+            }
+
+            return $token;
+        }
+    }
+}

@@ -1,0 +1,84 @@
+<?php namespace ProcessWire;
+
+require_once 'TokenException.php';
+
+/**
+ * Provides site tokens for Tokens text formatter.
+ */
+class SiteTokens extends WireData implements Module {
+
+    /**
+     * Provides module information.
+     *
+     * @return array
+     *   Information about the module.
+     *
+     */
+    public static function getModuleInfo() {
+        return array(
+            'title' => 'SiteTokens',
+            'summary' => __('Provides site tokens. Depends on TextformatterTokens module.', __FILE__),
+            'author' => 'ZIGIT Development',
+            'version' => 100,
+            'autoload' => true,
+            'singular' => true,
+            'requires' => array('TextformatterTokens'),
+        );
+    }
+
+    /**
+     * Initialize the module.
+     *
+     * @throws WireException
+     *
+     */
+    public function init() {
+        /** @var TextformatterTokens $tokens */
+        if($tokens = $this->wire()->modules->get('TextformatterTokens')) {
+            $tokens->registerToken('site:name', [$this, 'handleSiteNameToken']);
+            $tokens->registerToken('page', [$this, 'handlePageToken']);
+        }
+    }
+
+    /**
+     * Site name token handler.
+     *
+     * @return string
+     * @throws TokenException
+     * @throws WireException
+     *
+     */
+    public function handleSiteNameToken() {
+        $siteName = $this->wire()->config->siteName;
+
+        if(empty($siteName)) {
+            throw new TokenException('Site name not found.');
+        }
+
+        return $siteName;
+    }
+
+    /**
+     * Page token handler.
+     *
+     * @param array $parameters Parameters passed to token.
+     * @return string
+     * @throws TokenException
+     * @throws WireException
+     *
+     */
+    public function handlePageToken($parameters) {
+        if(empty($parameters['id'])) {
+            throw new TokenException('Page ID not specified.', 'Page ID not specified.');
+        }
+
+        $page_id = intval($parameters['id']);
+        $page = $this->wire()->pages->get($page_id);
+
+        if(!$page->get('id')) {
+            throw new TokenException("Page with ID {$parameters['id']} not found.");
+        }
+
+        return $page->get('body');
+    }
+}

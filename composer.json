@@ -1,0 +1,20 @@
+{
+  "name": "zigit-dev/textformatter_tokens",
+  "type": "processwire-module",
+  "extra": {
+    "installer-name": "TextformatterTokens"
+  },
+  "description": "Allows other modules to register tokens and replace them with actual values.",
+  "keywords": [ "textformatter_tokens", "tokens", "processwire"],
+  "homepage": "https://github.com/zigit-dev/TextformatterTokens",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "ZIGIT Development",
+      "homepage": "https://github.com/zigit-dev"
+    }
+  ],
+  "require": {
+    "processwire/processwire": "^3.0"
+  }
+}
