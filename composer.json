@@ -15,6 +15,6 @@
     }
   ],
   "require": {
-    "processwire/processwire": "^3.0"
+    "php": ">=5.5"
   }
 }

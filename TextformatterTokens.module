@@ -24,7 +24,7 @@ class TextformatterTokens extends Textformatter {
             'title' => 'TextformatterTokens',
             'summary' => __('Allows other modules to register tokens and replace them with actual values.', __FILE__),
             'author' => 'ZIGIT Development',
-            'version' => 100,
+            'version' => 101,
         );
     }
 
